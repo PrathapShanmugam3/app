@@ -16,29 +16,20 @@ def read_items(
 ) -> Any:
     """
     Retrieve items.
+    - Superusers: view all items
+    - Normal users: also view all items (but can only modify/delete their own)
     """
 
-    if current_user.is_superuser:
-        count_statement = select(func.count()).select_from(Item)
-        count = session.exec(count_statement).one()
-        statement = select(Item).offset(skip).limit(limit)
-        items = session.exec(statement).all()
-    else:
-        count_statement = (
-            select(func.count())
-            .select_from(Item)
-            .where(Item.owner_id == current_user.id)
-        )
-        count = session.exec(count_statement).one()
-        statement = (
-            select(Item)
-            .where(Item.owner_id == current_user.id)
-            .offset(skip)
-            .limit(limit)
-        )
-        items = session.exec(statement).all()
+    # Count all items
+    count_statement = select(func.count()).select_from(Item)
+    count = session.exec(count_statement).one()
+
+    # Fetch all items
+    statement = select(Item).offset(skip).limit(limit)
+    items = session.exec(statement).all()
 
     return ItemsPublic(data=items, count=count)
+
 
 
 @router.get("/{id}", response_model=ItemPublic)
