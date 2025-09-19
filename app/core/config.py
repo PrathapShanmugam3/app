@@ -1,4 +1,5 @@
 import warnings
+from pathlib import Path
 from typing import Annotated, Any, Literal
 
 from pydantic import (
@@ -35,7 +36,7 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     PRIVATE_KEY_PATH: str
     PUBLIC_KEY_PATH: str
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60  # default 1 hour
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     FRONTEND_HOST: str = "http://localhost:5173"
     ENVIRONMENT: Literal["local", "staging", "production"] = "local"
 
@@ -49,14 +50,18 @@ class Settings(BaseSettings):
     @computed_field
     @property
     def private_key(self) -> str:
-        with open(self.PRIVATE_KEY_PATH, "r") as f:
-            return f.read()
+        path = Path(self.PRIVATE_KEY_PATH)
+        if not path.exists():
+            raise FileNotFoundError(f"Private key file not found at {self.PRIVATE_KEY_PATH}")
+        return path.read_text()
 
     @computed_field
     @property
     def public_key(self) -> str:
-        with open(self.PUBLIC_KEY_PATH, "r") as f:
-            return f.read()
+        path = Path(self.PUBLIC_KEY_PATH)
+        if not path.exists():
+            raise FileNotFoundError(f"Public key file not found at {self.PUBLIC_KEY_PATH}")
+        return path.read_text()
 
     # -------------------------------
     # Project & DB settings
@@ -126,11 +131,11 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def _enforce_non_default_secrets(self) -> Self:
-        self._check_default_secret("PRIVATE_KEY_PATH", self.PRIVATE_KEY_PATH)
+        # Skip PRIVATE_KEY_PATH because it points to PEM files
         self._check_default_secret("POSTGRES_PASSWORD", self.POSTGRES_PASSWORD)
         self._check_default_secret("FIRST_SUPERUSER_PASSWORD", self.FIRST_SUPERUSER_PASSWORD)
         return self
 
 
-# Create a singleton settings object
+# Singleton instance
 settings = Settings()  # type: ignore
