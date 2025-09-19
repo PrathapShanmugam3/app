@@ -101,23 +101,33 @@ def generate_new_account_email(
 
 
 def generate_password_reset_token(email: str) -> str:
+    """
+    Generate a JWT token for password reset using the private PEM key.
+    """
     delta = timedelta(hours=settings.EMAIL_RESET_TOKEN_EXPIRE_HOURS)
     now = datetime.now(timezone.utc)
     expires = now + delta
-    exp = expires.timestamp()
+
     encoded_jwt = jwt.encode(
-        {"exp": exp, "nbf": now, "sub": email},
-        settings.SECRET_KEY,
+        {"exp": expires, "nbf": now, "sub": email},
+        key=settings.private_key,  # use private PEM key
         algorithm=security.ALGORITHM,
     )
     return encoded_jwt
 
 
 def verify_password_reset_token(token: str) -> str | None:
+    """
+    Verify a JWT token using the public PEM key.
+    Returns the email if valid, None if invalid.
+    """
     try:
         decoded_token = jwt.decode(
-            token, settings.SECRET_KEY, algorithms=[security.ALGORITHM]
+            token,
+            key=settings.public_key,  # use public PEM key
+            algorithms=[security.ALGORITHM],
         )
         return str(decoded_token["sub"])
     except InvalidTokenError:
         return None
+
